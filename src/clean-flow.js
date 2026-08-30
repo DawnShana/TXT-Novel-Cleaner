@@ -32,6 +32,14 @@ function profileScan(scan,mode){
   return {...scan,auto,review,stats:{...(scan.stats||{}),auto:auto.length,review:review.length}};
 }
 
+function highlight(text,needle,kind='hit'){
+  const s=String(text??''),q=String(needle??'');
+  if(!q)return esc(s);
+  const i=s.indexOf(q);
+  if(i<0)return esc(s);
+  return `${esc(s.slice(0,i))}<mark class="detected ${kind}">${esc(q)}</mark>${esc(s.slice(i+q.length))}`;
+}
+
 function invalidatePinyin(){
   if(!A.pinyin)return;
   A.pinyin=null;A.pd={};A.pinyinAuto={};
@@ -67,7 +75,7 @@ function renderAutoAd(){
   const r=$('#autoAdList');r.innerHTML='';
   for(const g of groupRows(A.scan?.auto||[])){
     A.autoAd[g.field]??='delete';const e=document.createElement('article');e.className='review-card';
-    e.innerHTML=`<div><div class="field">${esc(g.field)}</div><div class="reason">${esc(family(g))} · ${esc(g.kind)} · ${g.score.toFixed(1)} · ×${g.count}</div></div><div class="choices"><button data-v="delete">保持删除</button><button data-v="restore">恢复原文</button></div><div class="context">${esc(g.ctx)}</div>`;
+    e.innerHTML=`<div><div class="field"><mark class="detected ad-hit">${esc(g.field)}</mark></div><div class="reason">${esc(family(g))} · ${esc(g.kind)} · ${g.score.toFixed(1)} · ×${g.count}</div></div><div class="choices"><button data-v="delete">保持删除</button><button data-v="restore">恢复原文</button></div><div class="context">${highlight(g.ctx,g.field,'ad-hit')}</div>`;
     e.querySelectorAll('.choices button').forEach(b=>{const active=(A.autoAd[g.field]||'delete')===b.dataset.v;b.classList.toggle('active',active);b.classList.toggle(b.dataset.v==='delete'?'delete':'keep',active);b.onclick=()=>{A.autoAd[g.field]=b.dataset.v;invalidatePinyin();renderAutoAd()}});r.appendChild(e);
   }
 }
@@ -76,7 +84,7 @@ export function renderAdReview(){
   const r=$('#adReviewList');r.innerHTML='';
   for(const g of A.groups){
     A.ad[g.field]??='keep';const e=document.createElement('article');e.className='review-card';
-    e.innerHTML=`<div><div class="field">${esc(g.field)}</div><div class="reason">${esc(family(g))} · ${esc(g.kind)} · ${g.score.toFixed(1)} · ×${g.count}</div></div><div class="choices"><button data-v="delete">删除</button><button data-v="keep">保留</button></div><div class="family-actions"><button data-family="delete">同类全部删除</button><button data-family="keep">同类全部保留</button></div><div class="context">${esc(g.ctx)}</div>`;
+    e.innerHTML=`<div><div class="field"><mark class="detected ad-hit">${esc(g.field)}</mark></div><div class="reason">${esc(family(g))} · ${esc(g.kind)} · ${g.score.toFixed(1)} · ×${g.count}</div></div><div class="choices"><button data-v="delete">删除</button><button data-v="keep">保留</button></div><div class="family-actions"><button data-family="delete">同类全部删除</button><button data-family="keep">同类全部保留</button></div><div class="context">${highlight(g.ctx,g.field,'ad-hit')}</div>`;
     [...e.querySelectorAll('.choices button')].forEach(b=>{const active=(A.ad[g.field]||'keep')===b.dataset.v;b.classList.toggle('active',active);b.classList.toggle(b.dataset.v,active);b.onclick=()=>{A.ad[g.field]=b.dataset.v;invalidatePinyin();renderAdReview()}});
     e.querySelector('[data-family="delete"]').onclick=()=>setFamilyDecision(g,'delete');e.querySelector('[data-family="keep"]').onclick=()=>setFamilyDecision(g,'keep');r.appendChild(e);
   }
@@ -86,7 +94,7 @@ function renderAutoPinyin(){
   const r=$('#autoPinyinList');r.innerHTML='';
   for(const g of pinyinAutoGroups()){
     A.pinyinAuto[g.key]??='replace';const e=document.createElement('article');e.className='review-card';
-    e.innerHTML=`<div><div class="field">${esc(g.original)} → ${esc(g.replacement)}</div><div class="reason">${Math.round((g.confidence||1)*100)}% · ${esc(g.reason||'自动拼音修复')} · ×${g.count}</div></div><div class="choices"><button data-v="replace">保持替换</button><button data-v="keep">恢复原文</button></div><div class="context">${esc(g.context||'')}</div>`;
+    e.innerHTML=`<div><div class="field"><mark class="detected pinyin-hit">${esc(g.original)}</mark> → ${esc(g.replacement)}</div><div class="reason">${Math.round((g.confidence||1)*100)}% · ${esc(g.reason||'自动拼音修复')} · ×${g.count}</div></div><div class="choices"><button data-v="replace">保持替换</button><button data-v="keep">恢复原文</button></div><div class="context">${highlight(g.context||'',g.original,'pinyin-hit')}</div>`;
     e.querySelectorAll('.choices button').forEach(b=>{const active=(A.pinyinAuto[g.key]||'replace')===b.dataset.v;b.classList.toggle('active',active);b.classList.toggle(b.dataset.v==='replace'?'replace':'keep',active);b.onclick=()=>{A.pinyinAuto[g.key]=b.dataset.v;renderAutoPinyin()}});r.appendChild(e);
   }
 }
@@ -94,9 +102,13 @@ function renderAutoPinyin(){
 function renderPinyinReview(){
   const r=$('#pinyinReviewList');r.innerHTML='';
   for(const[i,c]of(A.pinyin?.review||[]).entries()){
-    A.pd[i]??='keep';const e=document.createElement('article');e.className='review-card';
-    e.innerHTML=`<div><div class="field">${esc(c.original)} → ${esc(c.replacement)}</div><div class="reason">${Math.round(c.confidence*100)}% · ${esc(c.reason)}</div></div><div class="choices"><button data-v="replace">替换</button><button data-v="keep">保留</button><button data-v="english">英文/名称</button></div><div class="context">${esc(c.context)}</div>`;
-    [...e.querySelectorAll('button')].forEach(b=>{const active=(A.pd[i]||'keep')===b.dataset.v;b.classList.toggle('active',active);b.classList.toggle(b.dataset.v,active);b.onclick=()=>{A.pd[i]=b.dataset.v;renderPinyinReview()}});r.appendChild(e);
+    A.pd[i]??='keep';const target=c.customTarget||c.replacement;const custom=!!c.customTarget;const e=document.createElement('article');e.className='review-card';
+    e.innerHTML=`<div><div class="field"><mark class="detected pinyin-hit">${esc(c.original)}</mark> → <span class="proposed-target ${custom?'custom':''}">${esc(target)}</span>${custom?'<i class="custom-badge">自定义</i>':''}</div><div class="reason">${Math.round(c.confidence*100)}% · ${esc(c.reason)}</div></div><div class="choices"><button data-v="replace">替换</button><button data-v="keep">保留</button><button data-v="english">英文/名称</button></div><div class="custom-replace"><input data-custom-input value="${esc(c.customTarget||'')}" placeholder="自定义替换内容，例如 象 / 洗脑"><button data-custom-apply>应用自定义并学习</button></div><div class="context">${highlight(c.context,c.original,'pinyin-hit')}</div>`;
+    [...e.querySelectorAll('.choices button')].forEach(b=>{const active=(A.pd[i]||'keep')===b.dataset.v;b.classList.toggle('active',active);b.classList.toggle(b.dataset.v,active);b.onclick=()=>{A.pd[i]=b.dataset.v;renderPinyinReview()}});
+    const input=e.querySelector('[data-custom-input]');
+    const apply=()=>{const v=input.value.trim();if(!v)return toast('请填写自定义替换内容');c.customTarget=v;A.pd[i]='custom';renderPinyinReview();toast(`已设置：${c.original} → ${v}，完成后写入个人拼音规则`)};
+    e.querySelector('[data-custom-apply]').onclick=apply;input.onkeydown=ev=>{if(ev.key==='Enter'){ev.preventDefault();apply()}};
+    r.appendChild(e);
   }badge();
 }
 
@@ -120,20 +132,41 @@ export async function pinyinStage(){
 
 function addFix(f){if(!f?.source||!f?.target)return 0;A.rules.pinyinFixes??=[];const x=A.rules.pinyinFixes.find(z=>z.source===f.source&&z.target===f.target);if(x){x.count=(x.count||1)+1;return 0}A.rules.pinyinFixes.push({source:f.source,target:f.target,count:1});return 1}
 function addKeep(type,value){if(!value)return 0;A.rules[type]??=[];const a=A.rules[type];if(a.some(x=>String(x).toLowerCase()===String(value).toLowerCase()))return 0;a.push(value);return 1}
+function customFix(c){
+  const target=String(c.customTarget||'').trim();if(!target)return null;
+  const f=c.learnFix;if(f?.source){let t=String(f.target||'');if(t.includes(c.replacement))t=t.replace(c.replacement,target);else t=target;return{source:f.source,target:t,count:1}}
+  return{source:c.original,target,count:1};
+}
 
 function learn(){
   let n=0;const gar=new Set(['pollution','obfuscated_ad','standalone_pollution_line','pollution_prefix','group_context_ad']);
   for(const m of A.scan?.auto||[]){if((A.autoAd[m.field]||'delete')==='restore'){n+=addKeep('keepFields',m.field);continue}if(m.kind==='learned_exact'||['html_tag','web_link','roman_numeral'].includes(m.kind))continue;const a=gar.has(m.kind)?(A.rules.garbleSamples??=[]):(A.rules.adExact??=[]);if(!a.includes(m.field)){a.push(m.field);n++}}
   for(const g of A.groups){const v=A.ad[g.field]||'keep';if(v==='delete'){const a=gar.has(g.kind)?(A.rules.garbleSamples??=[]):(A.rules.adExact??=[]);if(!a.includes(g.field)){a.push(g.field);n++}}else n+=addKeep('keepFields',g.field)}
-  for(const c of A.pinyin?.auto||[]){if((A.pinyinAuto[pinyinAutoKey(c)]||'replace')==='keep')n+=addKeep('pinyinKeep',c.learnFix?.source||c.original);else n+=addFix(c.learnFix||{source:c.original,target:c.replacement})}
-  for(const[k,v]of Object.entries(A.pd)){const c=A.pinyin?.review?.[+k];if(!c)continue;if(v==='replace')n+=addFix(c.learnFix||contextualFix(c,c.context||''));else if(v==='english')n+=addKeep('englishKeep',c.original);else n+=addKeep('pinyinKeep',c.learnFix?.source||c.original)}
+  for(const c of A.pinyin?.auto||[]){if((A.pinyinAuto[pinyinAutoKey(c)]||'replace')!=='keep')n+=addFix(c.learnFix||{source:c.original,target:c.replacement})}
+  for(const[k,v]of Object.entries(A.pd)){
+    const c=A.pinyin?.review?.[+k];if(!c)continue;
+    if(v==='replace')n+=addFix(c.learnFix||contextualFix(c,c.context||''));
+    else if(v==='custom')n+=addFix(customFix(c));
+    else if(v==='english')n+=addKeep('englishKeep',c.original);
+    // 普通“保留原文”只作用于本次，不默认写入 pinyinKeep。
+  }
   A.rules.stats??={};A.rules.stats.learnedBooks=(A.rules.stats.learnedBooks||0)+1;markDirty(Math.max(1,n));return n;
 }
 
 function nearest(hay,needle,want){let p=hay.indexOf(needle),best=-1,d=Infinity;while(p>=0){const nd=Math.abs(p-want);if(nd<d){best=p;d=nd}p=hay.indexOf(needle,p+1)}return best}
 function restoreAutoPinyin(text){const lines=text.split('\n'),by=new Map();for(const c of A.pinyin?.auto||[]){if((A.pinyinAuto[pinyinAutoKey(c)]||'replace')!=='keep')continue;if(!by.has(c.line))by.set(c.line,[]);by.get(c.line).push(c)}return lines.map((line,i)=>{let n=line;for(const c of(by.get(i+1)||[]).sort((a,b)=>b.start-a.start)){let p=c.start;if(n.slice(p,p+c.replacement.length)!==c.replacement)p=nearest(n,c.replacement,c.start);if(p>=0)n=n.slice(0,p)+c.original+n.slice(p+c.replacement.length)}return n}).join('\n')}
 
-export function finish(){if(!A.pinyin)return;const restored=restoreAutoPinyin(A.pinyin.text);A.final=applyPinyinReview(restored,A.pinyin.review||[],A.pd);const n=learn();$('#donePanel').classList.remove('hidden');$('#doneText').textContent=`处理完成；本次新增/确认学习约 ${n} 条。自动清理与自动拼音修复的恢复决定已应用。小说正文未上传。`;view('clean');badge()}
+function reviewWithCustom(){
+  const review=(A.pinyin?.review||[]).map(c=>c.customTarget?{...c,replacement:c.customTarget}:c);
+  const decisions={};for(const[k,v]of Object.entries(A.pd))decisions[k]=v==='custom'?'replace':v;
+  return{review,decisions};
+}
+
+export function finish(){
+  if(!A.pinyin)return;
+  const restored=restoreAutoPinyin(A.pinyin.text),x=reviewWithCustom();A.final=applyPinyinReview(restored,x.review,x.decisions);const n=learn();
+  $('#donePanel').classList.remove('hidden');$('#doneText').textContent=`处理完成；本次新增/确认学习约 ${n} 条。普通拼音“保留原文”不会写入个人规则；自定义替换会写入个人拼音规则。小说正文未上传。`;view('clean');badge();
+}
 
 function updateMode(mode){A.mode=mode;$$('#modeGroup button').forEach(x=>x.classList.toggle('active',x.dataset.mode===mode));$$('#modeLegend [data-mode-info]').forEach(x=>x.classList.toggle('active',x.dataset.modeInfo===mode));if(A.scan)toast('清理模式已切换；重新扫描后生效')}
 
