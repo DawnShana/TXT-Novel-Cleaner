@@ -8,6 +8,7 @@
   <title>TXT 小说去广告 Studio</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="enhancements.css">
 </head>
 <body>
   <div class="grid-bg" aria-hidden="true"></div>
@@ -28,7 +29,7 @@
       <div class="hero">
         <p class="eyebrow">100% LOCAL DOCUMENT PROCESSING</p>
         <h1>小说留在手机里，<br><em>杂质留在故事外。</em></h1>
-        <p>TXT 只在浏览器本地解析。广告、乱码、HTML / 图片链接与拼音混写均离线处理；只有你主动点击时，<code>rules.json</code> 才会更新到 GitHub。</p>
+        <p>TXT 只在浏览器本地解析。广告、乱码、HTML / 图片链接与拼音混写均离线处理；整理者等来源信息由程序在后台自动分析。只有你主动点击时，<code>rules.json</code> 才会更新到 GitHub。</p>
       </div>
 
       <div class="work-grid">
@@ -50,7 +51,6 @@
             <button data-mode="aggressive">激进</button>
           </div>
           <label class="switch-row"><span><b>拼音混写修复</b><small>如 jin乎 → 近乎；英文词优先保护</small></span><input id="pinyinToggle" type="checkbox" checked><i></i></label>
-          <label class="field-row"><span>发布者/整理者</span><input id="publisherInput" value="月漪,灵梦,凌梦,玲梦" placeholder="逗号分隔"></label>
           <button id="scanBtn" class="primary" disabled><span>开始本地扫描</span><b>→</b></button>
         </section>
       </div>
@@ -80,11 +80,16 @@
     <section id="view-review" class="view">
       <div class="section-head"><div><p class="eyebrow">HUMAN IN THE LOOP</p><h1>只处理真正有歧义的部分。</h1></div><button id="backCleanBtn" class="secondary">← 返回清理</button></div>
       <div id="reviewEmpty" class="panel empty">还没有需要复核的内容。先扫描一本 TXT 小说。</div>
+
       <div id="adReviewSection" class="review-section hidden">
-        <div class="review-title"><div><span class="step">AD / GARBAGE REVIEW</span><h2>广告与乱码候选</h2></div><button id="keepAllAdBtn" class="secondary">全部保留</button></div>
+        <div class="review-title">
+          <div><span class="step">AD / GARBAGE REVIEW</span><h2>广告与乱码候选</h2><p>每条候选都可单独处理，也可按同一识别类型批量“全部删除 / 全部保留”。</p></div>
+          <button id="keepAllAdBtn" class="secondary">全部保留</button>
+        </div>
         <div id="adReviewList" class="review-list"></div>
         <button id="applyAdBtn" class="primary wide">应用广告决定 · 进入拼音修复 →</button>
       </div>
+
       <div id="pinyinReviewSection" class="review-section hidden">
         <div class="review-title"><div><span class="step">PINYIN REVIEW</span><h2>低置信拼音候选</h2><p>英文/缩写已优先保护；高置信短语已自动修复。</p></div><button id="keepAllPinyinBtn" class="secondary">全部保持原文</button></div>
         <div id="pinyinReviewList" class="review-list"></div>
@@ -93,12 +98,29 @@
     </section>
 
     <section id="view-rules" class="view">
-      <div class="section-head"><div><p class="eyebrow">ONE FILE RULE STORE</p><h1>所有个人经验，都在一个 <code>rules.json</code>。</h1></div><span id="pendingSync" class="sync-pill">待同步 0</span></div>
-      <div class="metrics rules-metrics">
-        <div><b id="rAd">0</b><span>广告精确经验</span></div><div><b id="rGarble">0</b><span>乱码经验</span></div><div><b id="rPinyin">0</b><span>拼音修复</span></div><div><b id="rKeep">0</b><span>保留/英文</span></div>
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">RULE LIBRARY</p>
+          <h1>默认内置规则 + 一个个人 <code>rules.json</code>。</h1>
+          <p>内置规则会明确展示，但保持只读；点击内置规则可创建个人“保留覆盖”。个人规则可以直接编辑或删除，并在你点击保存后同步到 GitHub。</p>
+        </div>
+        <span id="pendingSync" class="sync-pill">待同步 0</span>
       </div>
+
+      <div class="metrics rules-metrics">
+        <div><b id="rAd">0</b><span>内置规则</span></div>
+        <div><b id="rGarble">0</b><span>个人规则</span></div>
+        <div><b id="rPinyin">0</b><span>个人拼音修复</span></div>
+        <div><b id="rKeep">0</b><span>个人保留 / 英文</span></div>
+      </div>
+
       <section class="panel rule-tools">
         <input id="ruleSearch" placeholder="搜索规则，例如 jin乎 / 群聊 / 53dushu">
+        <select id="ruleScope" aria-label="规则来源">
+          <option value="all">全部来源</option>
+          <option value="builtin">仅内置规则</option>
+          <option value="personal">仅个人规则</option>
+        </select>
         <div class="rule-actions"><button id="exportRulesBtn" class="secondary">导出 rules.json</button><label class="secondary file-label">导入 rules.json<input id="importRulesInput" type="file" accept="application/json,.json"></label></div>
       </section>
       <section class="panel"><div id="ruleList" class="rule-list"></div></section>
@@ -116,6 +138,30 @@
       <section class="panel privacy-card"><b>隐私边界</b><p>读取 TXT 使用浏览器 File API；清理和拼音模型全部在本机执行。GitHub 同步请求只包含 <code>rules.json</code>，不会包含小说正文、文件名或清理后的 TXT。</p></section>
     </section>
   </main>
+
+  <div id="ruleEditor" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><span class="step">RULE EDITOR</span><h2 id="editorTitle">编辑规则</h2><p id="editorMeta"></p></div>
+        <button id="editorCloseBtn" class="icon-btn" aria-label="关闭">×</button>
+      </div>
+      <div id="editorSimpleWrap">
+        <label class="editor-field"><span>规则内容</span><textarea id="editorValue" rows="5"></textarea></label>
+      </div>
+      <div id="editorPinyinWrap" class="hidden">
+        <label class="editor-field"><span>原文</span><input id="editorSource"></label>
+        <label class="editor-field"><span>替换为</span><input id="editorTarget"></label>
+      </div>
+      <p id="editorNote" class="note"></p>
+      <div class="modal-actions">
+        <button id="editorDeleteBtn" class="danger-btn">删除个人规则</button>
+        <button id="editorOverrideBtn" class="secondary hidden">创建个人覆盖</button>
+        <span class="modal-spacer"></span>
+        <button id="editorCancelBtn" class="secondary">取消</button>
+        <button id="editorSaveBtn" class="primary">保存修改</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast"></div>
   <script type="module" src="app.js"></script>
