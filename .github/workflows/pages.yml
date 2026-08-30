@@ -42,12 +42,18 @@ jobs:
           ];
           let bad = false;
           for (const file of files) {
+            const text = fs.readFileSync(file, 'utf8');
             try {
-              JSON.parse(fs.readFileSync(file, 'utf8'));
+              JSON.parse(text);
               console.log('OK      ' + file);
             } catch (e) {
               bad = true;
               console.error('INVALID ' + file + ': ' + e.message);
+              const m = String(e.message).match(/position\s+(\d+)/i);
+              if (m) {
+                const p = Number(m[1]);
+                console.error('CONTEXT ' + JSON.stringify(text.slice(Math.max(0, p - 140), Math.min(text.length, p + 140))));
+              }
             }
           }
           if (bad) process.exit(1);
