@@ -2,7 +2,7 @@ const HAN=/[\u3400-\u9fff\uf900-\ufaff]/u, ROMAN=/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨ�
 const ZERO=/[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/u;
 const STRONG=new Set(Array.from('弍貳陾迩侕爾倭鸸洱栮贰玖镹泗児亻俬祁岜飼琦玐鳍陕衤瘤柒坝鹨氿捌叁轳咝鸠罒揪吆叄镏遛芭翏崎鏾覇壹陵紦磷硫傘陸熘厁韭锍澪掺彡氵焐邬裠箘逡麇踆帬峮羣囷宭鷗儛'));
 const WEAK=new Set(Array.from('爸怡刘榴寺虾尹溜疤蹴删疚霓扒珊邻泣伞旗玥栎吴巫医霖洽亿玲企亦咎司柳陆吾伍污冥零七九四五六八三二一妻师玲铃灵陵'));
-const CONNECT=/[\s.;:`'"\\,?\[\]{}()<>+=_/@#%&|~^*，；：、·・—–＿／＼｜【】（）《》〈〉！？。]/u;
+const CONNECT=/[\s.;:`'"\\,?\[\]{}()<>+=_/@#%&|~^*，；：、·・—–＿／＼u005c｜【】（）《》〈〉！？。]/u;
 const CHAPTER=/^\s*(?:第[零〇一二三四五六七八九十百千万两\d]{1,8}[章节卷回部篇]|Chapter\s+\d+)/i;
 const GROUP=/(?:群聊|群撩|裙聊|群组|群組|羣聊|羣组|羣組|君羊|Qun|群|羣|裙)/iu;
 const ADWORDS=['小说版权归原作者','文本仅供个人学习','下载后24小时','支持订阅正版','拒绝盗版','免费外群','中转群','书友群','福利群','交流群','加群','群号','私聊群主','公众号','关注微信','最新网址','备用网址','请牢记本站','更多全网小说','免费提取全网','已购vip章节','VIP章节'];
@@ -12,13 +12,52 @@ const uniq=a=>[...new Set((a||[]).filter(Boolean))], isHan=c=>!!c&&HAN.test(c);
 function risk(c){if(!c)return 0;if(ZERO.test(c))return 5;if(STRONG.has(c))return 2.4;if(WEAK.has(c))return 1.15;if(/[①②③④⑤⑥⑦⑧⑨⑩⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑]/u.test(c))return 2.4;if(ROMAN.test(c))return 2.1;if(/[A-Za-z]/.test(c))return .55;if(/[0-9]/.test(c))return .35;if(/[∞∆ↀ⍳𝚀]/u.test(c))return 3;if(/[\p{Cf}\p{So}]/u.test(c))return 2.2;return 0}
 function feat(s){const a=Array.from(s),ws=a.map(risk),high=ws.filter(x=>x>=1.1).length,latin=a.filter(c=>/[A-Za-z]/.test(c)).length,han=a.filter(isHan).length,sym=a.filter(c=>CONNECT.test(c)).length;let score=ws.reduce((x,y)=>x+y,0)/Math.max(1,a.length)*4;if(high>=3)score+=2;if(latin>=2&&han>=2)score+=1.5;if(sym>=2&&high>=2)score+=1;return {score,high,latin,han}}
 function pollutionRegions(line){const c=Array.from(line),off=[];let p=0;for(const ch of c){off.push(p);p+=ch.length}off.push(p);const hard=[];c.forEach((x,i)=>{if(risk(x)>=1.1)hard.push(i)});if(!hard.length)return[];const groups=[];let g=[hard[0]];for(const i of hard.slice(1)){const prev=g[g.length-1],gap=c.slice(prev+1,i),bridge=gap.length<=8&&gap.every(x=>CONNECT.test(x)||risk(x)>0);if(i-prev<=5||bridge)g.push(i);else{groups.push(g);g=[i]}}groups.push(g);return groups.map(x=>{let a=x[0],b=x[x.length-1]+1;while(a>0&&a>x[0]-18&&(risk(c[a-1])>0||CONNECT.test(c[a-1])))a--;while(b<c.length&&b<x[x.length-1]+28&&(risk(c[b])>0||CONNECT.test(c[b])))b++;while(a<b&&/\s/u.test(c[a]))a++;while(b>a&&/\s/u.test(c[b-1]))b--;return [off[a],off[b]]}).filter(([a,b])=>b-a>=4)}
+const SPLIT_NOISE=/[0-9０-９群羣裙\s\p{P}\p{S}]/u;
+const SPLIT_PUNCT=/[\p{P}\p{S}]/u;
+function digitCount(s){return (s.match(/[0-9０-９]/gu)||[]).length}
+function punctCount(s){return Array.from(s).filter(c=>SPLIT_PUNCT.test(c)).length}
+function fuzzyRuoShuiAd(line){
+  const out=[],novelRx=/小[\s\p{P}\p{S}]*[说說][\s\p{P}\p{S}]*群/gu;
+  for(const m of line.matchAll(novelRx)){
+    const a0=m.index,leftStart=Math.max(0,a0-180),left=line.slice(leftStart,a0);
+    let brand=null,brandRx=/若[0-9０-９群羣裙\s\p{P}\p{S}]{0,150}水[0-9０-９群羣裙\s\p{P}\p{S}]{0,150}$/gu;
+    for(const x of left.matchAll(brandRx))brand=x;
+    if(!brand)continue;
+    const a=leftStart+brand.index;
+    const after=m.index+m[0].length,right=line.slice(after,Math.min(line.length,after+360));
+    const mid=/中[0-9０-９群羣裙\s\p{P}\p{S}]{0,180}[转轉][0-9０-９群羣裙\s\p{P}\p{S}]{0,100}群/gu.exec(right);
+    if(!mid)continue;
+    let b=after+mid.index+mid[0].length,e=b;
+    while(e<line.length&&e-b<180&&SPLIT_NOISE.test(line[e]))e++;
+    const tail=line.slice(b,e);if(digitCount(tail)>=5)b=e;
+    const field=line.slice(a,b),digits=digitCount(field),punct=punctCount(field);
+    if(digits<7||punct<8)continue;
+    out.push([a,b,Math.min(18,10+digits*.16+punct*.03)]);
+  }
+  return out;
+}
+function denseGroupCodeRegions(line){
+  const out=[],rx=/[群羣裙0-9０-９\s\p{P}\p{S}]{15,240}/gu;
+  for(const m of line.matchAll(rx)){
+    const s=m[0],digits=digitCount(s),groups=(s.match(/[群羣裙]/gu)||[]).length,punct=punctCount(s);
+    if(groups<1||digits<7||punct<3)continue;
+    const meaningful=digits+groups+punct,ratio=meaningful/Math.max(1,Array.from(s).length);
+    if(ratio<.72)continue;
+    let a=m.index,b=a+s.length;
+    while(a<b&&/\s/u.test(line[a]))a++;
+    while(b>a&&/\s/u.test(line[b-1]))b--;
+    if(b-a>=12)out.push([a,b,Math.min(15,8+digits*.22+groups*.45+punct*.025)]);
+  }
+  return out;
+}
+
 function match(lineNo,line,a,b,kind,score,action,reason){return{line:lineNo,start:a,end:b,kind,score:+score.toFixed(2),field:line.slice(a,b),action,reason,originalLine:line}}
 function exact(lineNo,line,rules){const out=[];for(const f of [...(rules.adExact||[]),...(rules.garbleSamples||[])]){if(!f||f.length<2)continue;let p=0;while((p=line.indexOf(f,p))>=0){out.push(match(lineNo,line,p,p+f.length,'learned_exact',15,'delete','个人/内置经验'));p+=f.length}}return out}
 function web(lineNo,line){const out=[];for(const rx of [/<\s*img\b[^>\n]*(?:>|$)/giu,/<\s*\/?\s*[A-Za-z][^>\n]{0,1000}>/gu,/(?:https?:\/\/|www\.)[^\s<>"'，。！？）】]+/giu])for(const m of line.matchAll(rx))out.push(match(lineNo,line,m.index,m.index+m[0].length,rx.source.startsWith('<')?'html_tag':'web_link',15,'delete','网页/HTML污染'));return out}
 function fullAd(lineNo,line,count,publishers){const s=line.trim();if(!s||CHAPTER.test(s))return null;let sc=0,why=[];const hits=ADWORDS.filter(x=>s.toLowerCase().includes(x.toLowerCase()));if(hits.length){sc+=4+Math.min(7,hits.length*1.8);why.push('广告关键词:'+hits.slice(0,3).join('/'))}if(/本书由.{0,24}(?:整理|校对|制作)/u.test(s)){sc+=6;why.push('整理声明')}if(/(?:QQ|QQ群|群号|微信|vx|V信)\s*[:：]?\s*[A-Za-z0-9_-]{5,20}|\b\d{7,12}\b/iu.test(s)){sc+=3;why.push('群号/联系方式')}if(/网址[:：]?\s*(?:https?:\/\/|www\.)/iu.test(s))sc+=6;if(count>=3&&hits.length)sc+=2;for(const x of publishers||[])if(x&&s.includes(x)&&/(?:整理|免费外群|中转群|资源|全网小说)/u.test(s)){sc+=4;break}return sc>=8?match(lineNo,line,0,line.length,'full_line_ad',sc,'delete',why.join('、')):sc>=5?match(lineNo,line,0,line.length,'full_line_ad',sc,'review',why.join('、')):null}
-function dedupe(ms){ms.sort((a,b)=>a.line-b.line||a.start-b.start||(b.end-b.start)-(a.end-a.start)||b.score-a.score);const out=[];for(const m of ms){const i=out.findIndex(x=>x.line===m.line&&!(x.end<=m.start||m.end<=x.start));if(i<0)out.push(m);else{const x=out[i],rank=y=>[(y.action==='delete'?2:1),y.kind==='learned_exact'?4:y.kind==='full_line_ad'?3:y.kind==='pollution'?2:1,y.score,y.end-y.start];const a=rank(m),b=rank(x);for(let k=0;k<a.length;k++){if(a[k]!==b[k]){if(a[k]>b[k])out[i]=m;break}}}}return out.sort((a,b)=>a.line-b.line||a.start-b.start)}
+function dedupe(ms){ms.sort((a,b)=>a.line-b.line||a.start-b.start||(b.end-b.start)-(a.end-a.start)||b.score-a.score);const out=[];for(const m of ms){const i=out.findIndex(x=>x.line===m.line&&!(x.end<=m.start||m.end<=x.start));if(i<0)out.push(m);else{const x=out[i],rank=y=>[(y.action==='delete'?2:1),y.kind==='split_punct_ad'?6:y.kind==='learned_exact'?5:y.kind==='group_code_ad'?4:y.kind==='full_line_ad'?3:y.kind==='pollution'?2:1,y.score,y.end-y.start];const a=rank(m),b=rank(x);for(let k=0;k<a.length;k++){if(a[k]!==b[k]){if(a[k]>b[k])out[i]=m;break}}}}return out.sort((a,b)=>a.line-b.line||a.start-b.start)}
 export function applyMatches(text,matches,preserveBlank=true){const lines=text.split(/\r?\n/),by=new Map();for(const m of matches){if(!by.has(m.line))by.set(m.line,[]);by.get(m.line).push(m)}const out=lines.map((l,i)=>{let n=l;for(const m of (by.get(i+1)||[]).sort((a,b)=>b.start-a.start))n=n.slice(0,m.start)+n.slice(m.end);return n});if(preserveBlank)return out.join('\n');let blank=0;return out.filter(x=>x.trim()?(blank=0,true):++blank<=2).join('\n')}
-export function scanText(text,rules={},opts={}){const lines=text.split(/\r?\n/),counts=new Map(),keep=new Set(rules.keepFields||[]),all=[];for(const l of lines){const s=l.trim();if(s)counts.set(s,(counts.get(s)||0)+1)}lines.forEach((line,i)=>{if(!line.trim())return;const no=i+1;all.push(...exact(no,line,rules),...web(no,line));const fa=fullAd(no,line,counts.get(line.trim())||1,opts.publishers||[]);if(fa)all.push(fa);if(!CHAPTER.test(line.trim()))for(const [a,b] of pollutionRegions(line)){const s=line.slice(a,b),f=feat(s),group=GROUP.test(s);if(f.high>=3&&(f.score>=6.2||(group&&f.score>=4.5))){let aa=a,bb=b;if(group&&f.score>=5.2){const left=line.slice(Math.max(0,a-10),a),right=line.slice(b,b+10);if(/^[\s\p{P}\p{S}]*$/u.test(left))aa=Math.max(0,a-left.length);if(/^[\s\p{P}\p{S}]*$/u.test(right))bb=Math.min(line.length,b+right.length)}all.push(match(no,line,aa,bb,'pollution',f.score,f.score>=7?'delete':'review',(group?'群系锚点、':'')+'异常 Unicode/汉字/数字混写'))}}for(const m of line.matchAll(/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+/gu))all.push(match(no,line,m.index,m.index+m[0].length,'roman_numeral',4.5,'review','罗马数字复核'))});const ms=dedupe(all).filter(m=>!keep.has(m.field)),auto=ms.filter(x=>x.action==='delete'),review=ms.filter(x=>x.action==='review');return{cleaned:applyMatches(text,auto,opts.preserveBlank!==false),auto,review,stats:{auto:auto.length,review:review.length,lines:lines.length}}}
+export function scanText(text,rules={},opts={}){const lines=text.split(/\r?\n/),counts=new Map(),keep=new Set(rules.keepFields||[]),all=[];for(const l of lines){const s=l.trim();if(s)counts.set(s,(counts.get(s)||0)+1)}lines.forEach((line,i)=>{if(!line.trim())return;const no=i+1;all.push(...exact(no,line,rules),...web(no,line));for(const[a,b,score]of fuzzyRuoShuiAd(line))all.push(match(no,line,a,b,'split_punct_ad',score,'delete','若水小说群/中转群：高密度标点拆分广告'));for(const[a,b,score]of denseGroupCodeRegions(line))all.push(match(no,line,a,b,'group_code_ad',score,'delete','群号被标点拆分：高密度数字/标点广告'));const fa=fullAd(no,line,counts.get(line.trim())||1,opts.publishers||[]);if(fa)all.push(fa);if(!CHAPTER.test(line.trim()))for(const [a,b] of pollutionRegions(line)){const s=line.slice(a,b),f=feat(s),group=GROUP.test(s);if(f.high>=3&&(f.score>=6.2||(group&&f.score>=4.5))){let aa=a,bb=b;if(group&&f.score>=5.2){const left=line.slice(Math.max(0,a-10),a),right=line.slice(b,b+10);if(/^[\s\p{P}\p{S}]*$/u.test(left))aa=Math.max(0,a-left.length);if(/^[\s\p{P}\p{S}]*$/u.test(right))bb=Math.min(line.length,b+right.length)}all.push(match(no,line,aa,bb,'pollution',f.score,f.score>=7?'delete':'review',(group?'群系锚点、':'')+'异常 Unicode/汉字/数字混写'))}}for(const m of line.matchAll(/[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+/gu))all.push(match(no,line,m.index,m.index+m[0].length,'roman_numeral',4.5,'review','罗马数字复核'))});const ms=dedupe(all).filter(m=>!keep.has(m.field)),auto=ms.filter(x=>x.action==='delete'),review=ms.filter(x=>x.action==='review');return{cleaned:applyMatches(text,auto,opts.preserveBlank!==false),auto,review,stats:{auto:auto.length,review:review.length,lines:lines.length}}}
 function pySeg(raw,p,max=4){const s=raw.toLowerCase().replaceAll('ü','v').replaceAll('u:','v'),memo=new Map();function rec(i,n){const k=i+':'+n;if(memo.has(k))return memo.get(k);if(i===s.length)return[[]];if(!n)return[];const out=[];for(let j=Math.min(s.length,i+6);j>i;j--){const q=s.slice(i,j);if(!p[q])continue;for(const r of rec(j,n-1)){out.push([q,...r]);if(out.length>=20)break}}memo.set(k,out);return out}return(p[s]&&s.length>=2?[[s]]:rec(0,max)).filter(x=>!x.some(q=>q.length===1)).slice(0,10)}
 function english(raw,left,right,rules,model){if(UPPER.has(raw))return true;if(/[A-Z]/.test(raw)&&(raw===raw.toUpperCase()||raw[0]===raw[0].toUpperCase()))return true;const low=raw.toLowerCase(),learn=new Set([...(rules.englishKeep||[]),...(model.e||[])].map(x=>String(x).toLowerCase()));return ENGLISH.has(low)||learn.has(low)||(!(isHan(left)||isHan(right)))}
 function candidates(parts,left,right,m){let beam=[[0,'']];for(const py of parts){const cs=(m.p[py]||[]).slice(0,10),next=[];for(const [s,prefix] of beam){const prev=prefix.slice(-1)||left;for(const ch of cs){let sc=s+.22*Math.log1p(m.u[ch]||0);if(isHan(prev))sc+=2.4*Math.log1p(m.b[prev+ch]||0);next.push([sc,prefix+ch])}}next.sort((a,b)=>b[0]-a[0]);beam=next.slice(0,50)}return beam.map(([s,t])=>[s+(t&&isHan(right)?2.4*Math.log1p(m.b[t.slice(-1)+right]||0):0),t]).sort((a,b)=>b[0]-a[0])}
