@@ -23,6 +23,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate JSON assets
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const files = [
+            'rules.json',
+            'pinyin-p.json',
+            'pinyin-u.json',
+            'pinyin-b.json',
+            'pinyin-t.json',
+            ...fs.readdirSync('rules/builtin')
+              .filter(x => x.endsWith('.json'))
+              .sort()
+              .map(x => 'rules/builtin/' + x),
+          ];
+          let bad = false;
+          for (const file of files) {
+            try {
+              JSON.parse(fs.readFileSync(file, 'utf8'));
+              console.log('OK      ' + file);
+            } catch (e) {
+              bad = true;
+              console.error('INVALID ' + file + ': ' + e.message);
+            }
+          }
+          if (bad) process.exit(1);
+          NODE
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
