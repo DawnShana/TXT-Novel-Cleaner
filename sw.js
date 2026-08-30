@@ -1,4 +1,4 @@
-const CACHE='novel-cleaner-pwa-v5';
+const CACHE='novel-cleaner-pwa-v6';
 const STATIC=[
   './','./index.html','./app.css','./enhancements.css','./app.js','./src/main.js','./src/state.js','./src/clean-flow.js','./src/rules-ui.js','./src/github-sync.js','./cleaner-core.js','./worker.js',
   './manifest.webmanifest','./icon.svg','./pinyin-p.json','./pinyin-u.json','./pinyin-b.json','./pinyin-t.json',
@@ -14,15 +14,11 @@ self.addEventListener('fetch',e=>{
   if(isRuleJson){
     e.respondWith(fetch(e.request,{cache:'no-store'}).then(r=>{
       if(!r.ok)throw new Error('HTTP '+r.status);
-      const copy=r.clone();
-      caches.open(CACHE).then(c=>c.put(e.request,copy));
-      return r;
+      const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r;
     }).catch(()=>caches.match(e.request)));
     return;
   }
   e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(n=>{
-    const copy=n.clone();
-    caches.open(CACHE).then(c=>c.put(e.request,copy));
-    return n;
+    const copy=n.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return n;
   })));
 });
