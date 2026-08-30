@@ -7,7 +7,8 @@ export const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;'
 
 export const A={
   mode:'balanced',file:null,source:'',rules:null,base:null,baseSources:[],personal:null,
-  scan:null,groups:[],ad:{},pinyin:null,pd:{},final:'',dirty:0,w:null,id:0,edit:null
+  scan:null,groups:[],ad:{},autoAd:{},pinyin:null,pd:{},pinyinAuto:{},
+  reviewGroup:'autoAd',final:'',dirty:0,w:null,id:0,edit:null
 };
 
 export const LS='novelCleaner.localRules.v2';
@@ -140,8 +141,8 @@ export function detectPublishers(text){
 }
 
 export function reset(){
-  A.scan=null;A.groups=[];A.ad={};A.pinyin=null;A.pd={};A.final='';
-  for(const id of['summaryPanel','donePanel','adReviewSection','pinyinReviewSection'])$('#'+id).classList.add('hidden');
+  A.scan=null;A.groups=[];A.ad={};A.autoAd={};A.pinyin=null;A.pd={};A.pinyinAuto={};A.final='';A.reviewGroup='autoAd';
+  for(const id of['summaryPanel','donePanel','autoAdSection','adReviewSection','autoPinyinSection','pinyinReviewSection','adStageFooter','pinyinStageFooter','reviewGroups'])$('#'+id)?.classList.add('hidden');
   $('#reviewEmpty').classList.remove('hidden');badge();
 }
 
@@ -156,15 +157,27 @@ export function groupRows(rows){
 
 export function family(g){
   if(g.kind==='full_line_ad')return'整行广告';
-  if(['pollution','obfuscated_ad','standalone_pollution_line','pollution_prefix'].includes(g.kind))return'乱码污染';
+  if(['split_punct_ad','group_code_ad'].includes(g.kind))return'标点拆分广告';
+  if(['pollution','obfuscated_ad','standalone_pollution_line','pollution_prefix','group_context_ad'].includes(g.kind))return'乱码污染';
   if(g.kind==='roman_numeral')return'罗马数字';
   if(g.kind==='web_link'||g.kind==='html_tag')return'网页残留';
   if(g.kind==='learned_exact')return'已学习字段';
   return g.kind||'其他';
 }
 
+export function pinyinAutoKey(c){return `${c.original}\0${c.replacement}`}
+
+export function pinyinAutoGroups(){
+  const m=new Map();
+  for(const c of A.pinyin?.auto||[]){
+    const key=pinyinAutoKey(c),g=m.get(key)||{key,original:c.original,replacement:c.replacement,reason:c.reason,confidence:c.confidence,count:0,context:c.context,learnFix:c.learnFix};
+    g.count++;g.confidence=Math.max(g.confidence||0,c.confidence||0);m.set(key,g);
+  }
+  return[...m.values()].sort((a,b)=>b.count-a.count||b.confidence-a.confidence);
+}
+
 export function badge(){
-  const n=A.groups.length+(A.pinyin?.review?.length||0);
+  const n=groupRows(A.scan?.auto||[]).length+A.groups.length+pinyinAutoGroups().length+(A.pinyin?.review?.length||0);
   $('#reviewBadge').textContent=n;$('#reviewBadge').classList.toggle('hidden',!n);
 }
 
