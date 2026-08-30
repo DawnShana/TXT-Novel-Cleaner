@@ -6,13 +6,14 @@ export const fmt=n=>Number(n||0).toLocaleString('zh-CN');
 export const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
 export const A={
-  mode:'balanced',file:null,source:'',rules:null,base:null,baseSources:[],personal:null,
+  mode:'balanced',file:null,source:'',rules:null,base:null,baseSources:[],personal:null,syncedPersonal:null,
   scan:null,groups:[],ad:{},autoAd:{},pinyin:null,pd:{},pinyinAuto:{},
   reviewGroup:'autoAd',final:'',dirty:0,w:null,id:0,edit:null
 };
 
 export const LS='novelCleaner.localRules.v2';
 export const LG='novelCleaner.git.v1';
+export const SYNCED='novelCleaner.syncedRules.v1';
 export const B=[
   'rules/builtin/builtin-ad-1.json',
   'rules/builtin/builtin-ad-2.json',
@@ -25,6 +26,8 @@ export const TYPE_LABEL={
   adExact:'广告',garbleSamples:'乱码',pinyinFixes:'拼音修复',
   keepFields:'保留覆盖',pinyinKeep:'拼音保留',englishKeep:'英文/名称'
 };
+
+const RULE_TYPES=['adExact','garbleSamples','keepFields','pinyinKeep','englishKeep','pinyinFixes'];
 
 export function toast(s){
   const e=$('#toast');
@@ -57,17 +60,43 @@ export function countRuleSet(r){
     .reduce((n,k)=>n+(r?.[k]?.length||0),0)+(r?.pinyinFixes?.length||0);
 }
 
+function sameKey(type,value){
+  if(type==='pinyinFixes')return `${type}\0${value?.source||''}\0${value?.target||''}\0${Math.max(1,+value?.count||1)}`;
+  return `${type}\0${String(value??'')}`;
+}
+
+function flattenRuleSet(r){
+  const out=[];
+  for(const type of RULE_TYPES){
+    const arr=r?.[type]||[];
+    arr.forEach((value,index)=>out.push({type,index,value,key:sameKey(type,value)}));
+  }
+  return out;
+}
+
+export function pendingRuleChanges(){
+  const cur=flattenRuleSet(A.personal||empty()),old=flattenRuleSet(A.syncedPersonal||empty());
+  const curSet=new Set(cur.map(x=>x.key)),oldSet=new Set(old.map(x=>x.key));
+  const added=cur.filter(x=>!oldSet.has(x.key)).map(x=>({...x,change:'pending',editable:true}));
+  const deleted=old.filter(x=>!curSet.has(x.key)).map(x=>({...x,change:'deleted',editable:false}));
+  return [...added,...deleted];
+}
+
+export function refreshDirty(){
+  A.dirty=pendingRuleChanges().length;
+  const e=$('#pendingSync');
+  if(e){e.textContent=`待同步 ${fmt(A.dirty)}`;e.classList.toggle('dirty',A.dirty>0)}
+  return A.dirty;
+}
+
 export function persist(){
   A.personal=subtract(A.rules,A.base);
   localStorage.setItem(LS,JSON.stringify(A.personal));
-  counts();
+  counts();refreshDirty();
 }
 
-export function markDirty(n=1){
-  A.dirty+=n;
+export function markDirty(){
   if(A.personal)A.personal.version=(+A.personal.version||1)+1;
-  $('#pendingSync').textContent=`待同步 ${fmt(A.dirty)}`;
-  $('#pendingSync').classList.toggle('dirty',A.dirty>0);
   persist();
 }
 
@@ -81,12 +110,14 @@ export async function loadRules(){
   try{
     const [remotePersonal,...bs]=await Promise.all([j(`./rules.json?t=${Date.now()}`),...B.map(x=>j('./'+x))]);
     let base=empty();for(const b of bs)base=mergeRules(base,b);
+    let cachedSynced=null,local=null;
+    try{cachedSynced=JSON.parse(localStorage.getItem(SYNCED)||'null')}catch{}
+    try{local=JSON.parse(localStorage.getItem(LS)||'null')}catch{}
+    const synced=(cachedSynced&&(+cachedSynced.version||0)>(+remotePersonal.version||0))?cachedSynced:remotePersonal;
     let personal=remotePersonal;
-    try{
-      const local=JSON.parse(localStorage.getItem(LS)||'null');
-      if(local&&(+local.version||0)>(+remotePersonal.version||0))personal=local;
-    }catch{}
-    A.base=base;A.baseSources=bs.map((rules,i)=>({path:B[i],rules}));A.personal=personal;A.rules=mergeRules(base,personal);
+    if(local&&(+local.version||0)>(+remotePersonal.version||0))personal=local;
+    A.base=base;A.baseSources=bs.map((rules,i)=>({path:B[i],rules}));A.syncedPersonal=synced;A.personal=personal;A.rules=mergeRules(base,personal);
+    localStorage.setItem(SYNCED,JSON.stringify(synced));
     $('#ruleStatus').className='dot ready';
     $('#ruleStatusText').textContent=`内置 ${fmt(countRuleSet(base))} · 个人 ${fmt(countRuleSet(personal))}`;
     persist();
