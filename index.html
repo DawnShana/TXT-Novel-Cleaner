@@ -50,6 +50,11 @@
             <button class="active" data-mode="balanced">平衡</button>
             <button data-mode="aggressive">激进</button>
           </div>
+          <div class="mode-legend" id="modeLegend">
+            <div data-mode-info="conservative"><b>保守</b><span>只自动处理已学习规则、网址/HTML 与极高置信广告；更多内容交给复核。</span></div>
+            <div class="active" data-mode-info="balanced"><b>平衡 · 推荐</b><span>高置信广告自动清理，边界项进入复核，兼顾效率与误删控制。</span></div>
+            <div data-mode-info="aggressive"><b>激进</b><span>扩大自动清理范围；适合污染很重的文本，但建议检查“自动清理”分组。</span></div>
+          </div>
           <label class="switch-row"><span><b>拼音混写修复</b><small>如 jin乎 → 近乎；英文词优先保护</small></span><input id="pinyinToggle" type="checkbox" checked><i></i></label>
           <button id="scanBtn" class="primary" disabled><span>开始本地扫描</span><b>→</b></button>
         </section>
@@ -68,7 +73,7 @@
           <div><b id="mPinyinAuto">—</b><span>拼音自动修复</span></div>
           <div><b id="mPinyinReview">—</b><span>拼音待复核</span></div>
         </div>
-        <p id="summaryNote" class="note">广告复核完成后才执行拼音修复。</p>
+        <p id="summaryNote" class="note">当前使用“平衡”模式。进入复核后可查看自动处理内容，并随时恢复。</p>
       </section>
 
       <section id="donePanel" class="panel done-panel hidden">
@@ -78,21 +83,53 @@
     </section>
 
     <section id="view-review" class="view">
-      <div class="section-head"><div><p class="eyebrow">HUMAN IN THE LOOP</p><h1>只处理真正有歧义的部分。</h1></div><button id="backCleanBtn" class="secondary">← 返回清理</button></div>
-      <div id="reviewEmpty" class="panel empty">还没有需要复核的内容。先扫描一本 TXT 小说。</div>
+      <div class="section-head"><div><p class="eyebrow">HUMAN IN THE LOOP</p><h1>自动处理也看得见，也能撤销。</h1><p>按四个分组切换，不再把所有候选纵向堆在一个页面里。</p></div><button id="backCleanBtn" class="secondary">← 返回清理</button></div>
+      <div id="reviewEmpty" class="panel empty">还没有扫描结果。先扫描一本 TXT 小说。</div>
+
+      <div id="reviewGroups" class="review-groups hidden">
+        <button data-review-group="autoAd"><b id="gAutoAd">0</b><span>自动清理</span><small>可恢复</small></button>
+        <button data-review-group="reviewAd"><b id="gReviewAd">0</b><span>广告待复核</span><small>删除 / 保留</small></button>
+        <button data-review-group="autoPinyin"><b id="gAutoPinyin">0</b><span>自动拼音修复</span><small>可恢复原文</small></button>
+        <button data-review-group="reviewPinyin"><b id="gReviewPinyin">0</b><span>拼音待复核</span><small>替换 / 保留</small></button>
+      </div>
+
+      <div id="autoAdSection" class="review-section hidden">
+        <div class="review-title">
+          <div><span class="step">AUTO CLEANED</span><h2>自动清理内容</h2><p>这些内容已按当前模式自动删除。任何一项都可以恢复，恢复后会学习为保留规则。</p></div>
+          <div class="bulk-actions"><button id="restoreAllAutoAdBtn" class="secondary">全部恢复</button><button id="deleteAllAutoAdBtn" class="secondary">全部保持删除</button></div>
+        </div>
+        <div id="autoAdList" class="review-list"></div>
+      </div>
 
       <div id="adReviewSection" class="review-section hidden">
         <div class="review-title">
-          <div><span class="step">AD / GARBAGE REVIEW</span><h2>广告与乱码候选</h2><p>每条候选都可单独处理，也可按同一识别类型批量“全部删除 / 全部保留”。</p></div>
+          <div><span class="step">AD / GARBAGE REVIEW</span><h2>广告与乱码候选</h2><p>每条候选可单独处理，也可按同一识别类型批量“全部删除 / 全部保留”。</p></div>
           <button id="keepAllAdBtn" class="secondary">全部保留</button>
         </div>
         <div id="adReviewList" class="review-list"></div>
-        <button id="applyAdBtn" class="primary wide">应用广告决定 · 进入拼音修复 →</button>
+      </div>
+
+      <div id="adStageFooter" class="review-stage-footer hidden">
+        <button id="applyAdBtn" class="primary wide">确认广告阶段 · 进入拼音修复 →</button>
+      </div>
+
+      <div id="autoPinyinSection" class="review-section hidden">
+        <div class="review-title">
+          <div><span class="step">AUTO PINYIN FIX</span><h2>自动拼音修复</h2><p>高置信替换同样完整展示。发现不正确时可以恢复原文。</p></div>
+          <div class="bulk-actions"><button id="restoreAllAutoPinyinBtn" class="secondary">全部恢复原文</button><button id="replaceAllAutoPinyinBtn" class="secondary">全部保持替换</button></div>
+        </div>
+        <div id="autoPinyinList" class="review-list"></div>
       </div>
 
       <div id="pinyinReviewSection" class="review-section hidden">
-        <div class="review-title"><div><span class="step">PINYIN REVIEW</span><h2>低置信拼音候选</h2><p>英文/缩写已优先保护；高置信短语已自动修复。</p></div><button id="keepAllPinyinBtn" class="secondary">全部保持原文</button></div>
+        <div class="review-title">
+          <div><span class="step">PINYIN REVIEW</span><h2>低置信拼音候选</h2><p>英文/缩写已优先保护；这里处理有歧义的拼音候选。</p></div>
+          <div class="bulk-actions"><button id="replaceAllPinyinBtn" class="secondary">全部替换</button><button id="keepAllPinyinBtn" class="secondary">全部保持原文</button></div>
+        </div>
         <div id="pinyinReviewList" class="review-list"></div>
+      </div>
+
+      <div id="pinyinStageFooter" class="review-stage-footer hidden">
         <button id="finishBtn" class="primary wide">应用拼音决定 · 完成 →</button>
       </div>
     </section>
@@ -102,16 +139,16 @@
         <div>
           <p class="eyebrow">RULE LIBRARY</p>
           <h1>默认内置规则 + 一个个人 <code>rules.json</code>。</h1>
-          <p>内置规则会明确展示，但保持只读；点击内置规则可创建个人“保留覆盖”。个人规则可以直接编辑或删除，并在你点击保存后同步到 GitHub。</p>
+          <p>点击下方四张卡片可直接筛选规则；个人规则可编辑、删除，也可手动新增。</p>
         </div>
         <span id="pendingSync" class="sync-pill">待同步 0</span>
       </div>
 
-      <div class="metrics rules-metrics">
-        <div><b id="rAd">0</b><span>内置规则</span></div>
-        <div><b id="rGarble">0</b><span>个人规则</span></div>
-        <div><b id="rPinyin">0</b><span>个人拼音修复</span></div>
-        <div><b id="rKeep">0</b><span>个人保留 / 英文</span></div>
+      <div class="metrics rules-metrics clickable-metrics" id="ruleMetricFilters">
+        <button data-rule-metric="builtin"><b id="rAd">0</b><span>内置规则</span></button>
+        <button data-rule-metric="personal"><b id="rGarble">0</b><span>个人规则</span></button>
+        <button data-rule-metric="pinyin"><b id="rPinyin">0</b><span>个人拼音修复</span></button>
+        <button data-rule-metric="keep"><b id="rKeep">0</b><span>个人保留 / 英文</span></button>
       </div>
 
       <section class="panel rule-tools">
@@ -121,7 +158,7 @@
           <option value="builtin">仅内置规则</option>
           <option value="personal">仅个人规则</option>
         </select>
-        <div class="rule-actions"><button id="exportRulesBtn" class="secondary">导出 rules.json</button><label class="secondary file-label">导入 rules.json<input id="importRulesInput" type="file" accept="application/json,.json"></label></div>
+        <div class="rule-actions"><button id="addRuleBtn" class="primary">＋ 添加规则</button><button id="exportRulesBtn" class="secondary">导出 rules.json</button><label class="secondary file-label">导入 rules.json<input id="importRulesInput" type="file" accept="application/json,.json"></label></div>
       </section>
       <section class="panel"><div id="ruleList" class="rule-list"></div></section>
     </section>
@@ -145,20 +182,24 @@
         <div><span class="step">RULE EDITOR</span><h2 id="editorTitle">编辑规则</h2><p id="editorMeta"></p></div>
         <button id="editorCloseBtn" class="icon-btn" aria-label="关闭">×</button>
       </div>
-      <div id="editorSimpleWrap">
-        <label class="editor-field"><span>规则内容</span><textarea id="editorValue" rows="5"></textarea></label>
+      <div id="editorTypeWrap" class="editor-field hidden">
+        <span>规则类型</span>
+        <select id="editorType">
+          <option value="adExact">广告精确规则</option>
+          <option value="garbleSamples">乱码样本</option>
+          <option value="pinyinFixes">拼音修复</option>
+          <option value="keepFields">保留覆盖</option>
+          <option value="pinyinKeep">拼音保留</option>
+          <option value="englishKeep">英文 / 名称</option>
+        </select>
       </div>
-      <div id="editorPinyinWrap" class="hidden">
-        <label class="editor-field"><span>原文</span><input id="editorSource"></label>
-        <label class="editor-field"><span>替换为</span><input id="editorTarget"></label>
-      </div>
+      <div id="editorSimpleWrap"><label class="editor-field"><span>规则内容</span><textarea id="editorValue" rows="5"></textarea></label></div>
+      <div id="editorPinyinWrap" class="hidden"><label class="editor-field"><span>原文</span><input id="editorSource"></label><label class="editor-field"><span>替换为</span><input id="editorTarget"></label></div>
       <p id="editorNote" class="note"></p>
       <div class="modal-actions">
         <button id="editorDeleteBtn" class="danger-btn">删除个人规则</button>
         <button id="editorOverrideBtn" class="secondary hidden">创建个人覆盖</button>
-        <span class="modal-spacer"></span>
-        <button id="editorCancelBtn" class="secondary">取消</button>
-        <button id="editorSaveBtn" class="primary">保存修改</button>
+        <span class="modal-spacer"></span><button id="editorCancelBtn" class="secondary">取消</button><button id="editorSaveBtn" class="primary">保存修改</button>
       </div>
     </div>
   </div>
