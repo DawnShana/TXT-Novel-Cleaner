@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d0b">
+  <meta name="color-scheme" content="dark">
+  <title>TXT 小说去广告 Studio</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-chip">TXT</span><div><b>小说去广告</b><small>LOCAL PWA STUDIO</small></div></div>
+    <div class="status"><span id="ruleStatus" class="dot"></span><span id="ruleStatusText">规则加载中</span></div>
+  </header>
+
+  <main class="shell">
+    <nav class="tabs" aria-label="主导航">
+      <button class="tab active" data-view="clean">清理</button>
+      <button class="tab" data-view="review">复核 <span id="reviewBadge" class="badge hidden">0</span></button>
+      <button class="tab" data-view="rules">规则</button>
+      <button class="tab" data-view="settings">设置</button>
+    </nav>
+
+    <section id="view-clean" class="view active">
+      <div class="hero">
+        <p class="eyebrow">100% LOCAL DOCUMENT PROCESSING</p>
+        <h1>小说留在手机里，<br><em>杂质留在故事外。</em></h1>
+        <p>TXT 只在浏览器本地解析。广告、乱码、HTML / 图片链接与拼音混写均离线处理；只有你主动点击时，<code>rules.json</code> 才会更新到 GitHub。</p>
+      </div>
+
+      <div class="work-grid">
+        <section class="panel upload-panel">
+          <div class="step">01 / INPUT</div>
+          <label class="file-pick" for="fileInput">
+            <input id="fileInput" type="file" accept=".txt,text/plain">
+            <span class="file-icon">＋</span>
+            <strong id="fileTitle">选择 TXT 小说</strong>
+            <small id="fileMeta">UTF-8 / GB18030 / Big5 · 文件不会上传</small>
+          </label>
+        </section>
+
+        <section class="panel config-panel">
+          <div class="step">02 / CLEANING PROFILE</div>
+          <div class="segmented" id="modeGroup">
+            <button data-mode="conservative">保守</button>
+            <button class="active" data-mode="balanced">平衡</button>
+            <button data-mode="aggressive">激进</button>
+          </div>
+          <label class="switch-row"><span><b>拼音混写修复</b><small>如 jin乎 → 近乎；英文词优先保护</small></span><input id="pinyinToggle" type="checkbox" checked><i></i></label>
+          <label class="field-row"><span>发布者/整理者</span><input id="publisherInput" value="月漪,灵梦,凌梦,玲梦" placeholder="逗号分隔"></label>
+          <button id="scanBtn" class="primary" disabled><span>开始本地扫描</span><b>→</b></button>
+        </section>
+      </div>
+
+      <section id="progressPanel" class="panel progress-panel hidden">
+        <div class="progress-head"><div><span class="step">LOCAL ANALYSIS</span><strong id="progressText">正在扫描…</strong></div><span id="progressPercent">0%</span></div>
+        <div class="track"><i id="progressBar"></i></div>
+      </section>
+
+      <section id="summaryPanel" class="panel summary-panel hidden">
+        <div class="summary-head"><div><span class="step">SCAN RESULT</span><h2 id="summaryTitle">扫描完成</h2></div><button id="goReviewBtn" class="secondary">进入复核 →</button></div>
+        <div class="metrics">
+          <div><b id="mAuto">0</b><span>自动清理</span></div>
+          <div><b id="mReview">0</b><span>广告待复核</span></div>
+          <div><b id="mPinyinAuto">—</b><span>拼音自动修复</span></div>
+          <div><b id="mPinyinReview">—</b><span>拼音待复核</span></div>
+        </div>
+        <p id="summaryNote" class="note">广告复核完成后才执行拼音修复。</p>
+      </section>
+
+      <section id="donePanel" class="panel done-panel hidden">
+        <div><span class="step">DONE</span><h2>最终文本已生成</h2><p id="doneText">—</p></div>
+        <div class="done-actions"><button id="downloadBtn" class="primary">下载清理版 TXT</button><button id="saveGitQuickBtn" class="secondary">保存学习规则到 GitHub</button></div>
+      </section>
+    </section>
+
+    <section id="view-review" class="view">
+      <div class="section-head"><div><p class="eyebrow">HUMAN IN THE LOOP</p><h1>只处理真正有歧义的部分。</h1></div><button id="backCleanBtn" class="secondary">← 返回清理</button></div>
+      <div id="reviewEmpty" class="panel empty">还没有需要复核的内容。先扫描一本 TXT 小说。</div>
+      <div id="adReviewSection" class="review-section hidden">
+        <div class="review-title"><div><span class="step">AD / GARBAGE REVIEW</span><h2>广告与乱码候选</h2></div><button id="keepAllAdBtn" class="secondary">全部保留</button></div>
+        <div id="adReviewList" class="review-list"></div>
+        <button id="applyAdBtn" class="primary wide">应用广告决定 · 进入拼音修复 →</button>
+      </div>
+      <div id="pinyinReviewSection" class="review-section hidden">
+        <div class="review-title"><div><span class="step">PINYIN REVIEW</span><h2>低置信拼音候选</h2><p>英文/缩写已优先保护；高置信短语已自动修复。</p></div><button id="keepAllPinyinBtn" class="secondary">全部保持原文</button></div>
+        <div id="pinyinReviewList" class="review-list"></div>
+        <button id="finishBtn" class="primary wide">应用拼音决定 · 完成 →</button>
+      </div>
+    </section>
+
+    <section id="view-rules" class="view">
+      <div class="section-head"><div><p class="eyebrow">ONE FILE RULE STORE</p><h1>所有个人经验，都在一个 <code>rules.json</code>。</h1></div><span id="pendingSync" class="sync-pill">待同步 0</span></div>
+      <div class="metrics rules-metrics">
+        <div><b id="rAd">0</b><span>广告精确经验</span></div><div><b id="rGarble">0</b><span>乱码经验</span></div><div><b id="rPinyin">0</b><span>拼音修复</span></div><div><b id="rKeep">0</b><span>保留/英文</span></div>
+      </div>
+      <section class="panel rule-tools">
+        <input id="ruleSearch" placeholder="搜索规则，例如 jin乎 / 群聊 / 53dushu">
+        <div class="rule-actions"><button id="exportRulesBtn" class="secondary">导出 rules.json</button><label class="secondary file-label">导入 rules.json<input id="importRulesInput" type="file" accept="application/json,.json"></label></div>
+      </section>
+      <section class="panel"><div id="ruleList" class="rule-list"></div></section>
+    </section>
+
+    <section id="view-settings" class="view">
+      <div class="section-head"><div><p class="eyebrow">PERSONAL GITHUB SYNC</p><h1>GitHub 只是规则硬盘，<br>不是小说服务器。</h1><p>Token 仅保存到当前浏览器的 localStorage，不写入网页源码，也不会进入 <code>rules.json</code>。</p></div></div>
+      <section class="panel settings-card">
+        <label class="field-row"><span>仓库</span><input id="repoInput" value="DawnShana/TXT-Novel-Cleaner" placeholder="owner/repo"></label>
+        <label class="field-row"><span>分支</span><input id="branchInput" value="main"></label>
+        <label class="field-row"><span>Fine-grained Token</span><input id="tokenInput" type="password" autocomplete="off" placeholder="仅保存在本机浏览器"></label>
+        <div class="settings-actions"><button id="testGitBtn" class="secondary">测试 GitHub 连接</button><button id="saveGitBtn" class="primary">保存规则到 GitHub</button><button id="pullGitBtn" class="secondary">从 GitHub 恢复规则</button></div>
+        <div id="gitResult" class="note">尚未连接。仓库创建并开启 GitHub Pages 后，只需配置一次 Token。</div>
+      </section>
+      <section class="panel privacy-card"><b>隐私边界</b><p>读取 TXT 使用浏览器 File API；清理和拼音模型全部在本机执行。GitHub 同步请求只包含 <code>rules.json</code>，不会包含小说正文、文件名或清理后的 TXT。</p></section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

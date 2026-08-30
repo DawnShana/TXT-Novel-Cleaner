@@ -1,0 +1,13 @@
+{
+  "name":"TXT 小说去广告 Studio",
+  "short_name":"小说去广告",
+  "description":"浏览器本地 TXT 小说广告、乱码与拼音混写清理工具",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#0b0d0b",
+  "theme_color":"#0b0d0b",
+  "icons":[
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
