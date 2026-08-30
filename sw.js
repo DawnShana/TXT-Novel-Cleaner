@@ -1,4 +1,4 @@
-const CACHE='novel-cleaner-pwa-v7';
+const CACHE='novel-cleaner-pwa-v8';
 const STATIC=[
   './','./index.html','./app.css','./enhancements.css','./app.js','./src/main.js','./src/state.js','./src/clean-flow.js','./src/rules-ui.js','./src/github-sync.js','./cleaner-core.js','./worker.js',
   './manifest.webmanifest','./icon.svg','./pinyin-p.json','./pinyin-u.json','./pinyin-b.json','./pinyin-t.json',
