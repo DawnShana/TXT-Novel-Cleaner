@@ -24,6 +24,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          node --check app.js
+          node --check cleaner-core.js
+          node --check worker.js
+          for f in src/*.js; do node --check "$f"; done
+
       - name: Validate JSON assets
         shell: bash
         run: |
