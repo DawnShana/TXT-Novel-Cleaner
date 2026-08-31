@@ -29,6 +29,7 @@ jobs:
         run: |
           node --check app.js
           node --check cleaner-core.js
+          node --check ad-pinyin-overlay.js
           node --check worker.js
           for f in src/*.js; do node --check "$f"; done
 
