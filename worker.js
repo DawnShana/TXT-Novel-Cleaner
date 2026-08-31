@@ -1,4 +1,5 @@
 import {scanText,repairPinyin,applyMatches} from './cleaner-core.js';
+import {mergeAdPinyinScan,gatePinyinResult} from './ad-pinyin-overlay.js';
 let model=null;
 
 async function getModel(){
@@ -32,11 +33,13 @@ self.onmessage=async e=>{
   try{
     if(type==='scan'){
       const {text,rules,opts}=e.data;
-      const result=protectStoryEmotes(scanText(text,rules,opts),text,opts);
+      let result=protectStoryEmotes(scanText(text,rules,opts),text,opts);
+      result=mergeAdPinyinScan(result,text,applyMatches,opts?.preserveBlank!==false);
       self.postMessage({id,ok:true,result});
     }else if(type==='pinyin'){
       const {text,rules}=e.data;
-      self.postMessage({id,ok:true,result:repairPinyin(text,rules,await getModel())});
+      const result=repairPinyin(text,rules,await getModel());
+      self.postMessage({id,ok:true,result:gatePinyinResult(text,result)});
     }else throw new Error('未知任务');
   }catch(err){self.postMessage({id,ok:false,error:String(err?.stack||err)});}
 };
