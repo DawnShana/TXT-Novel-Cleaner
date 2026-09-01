@@ -1,6 +1,6 @@
 {
-  "schema": 1,
-  "version": 66,
+  "schema": 2,
+  "version": 69,
   "adExact": [
     "　　ps：群号：908998101，问题是主角名字",
     "若!水\"?.小?:.说:;群.,7\"?\"6\"?\"3\"!4.'\"8\"??0'.1?群,７!::6?\"'?;?4\"８,0,\"1.,,5,7,群:\"8;;5:0,2!'9:,'6;??５\"0,?:15;.,7?若,水:;中.转..\"群'!,8:\".5;:,0:2'9?',6!;.5;:.0'\"!1",
@@ -174,7 +174,6 @@
     "羣 七 六 三 四 八 零 一 五 七"
   ],
   "keepFields": [
-    "JOJO2",
     "B++",
     "A++",
     "芭芭拉是一",
@@ -427,11 +426,15 @@
     "ending",
     "case"
   ],
+  "repeatPatterns": [],
+  "adFamilies": [],
+  "adPinyinFamilies": [],
+  "structuralRules": [],
   "stats": {
     "learnedBooks": 0,
-    "adExact": 165,
+    "adExact": 1785,
     "garbleSamples": 3,
     "pinyinFixes": 43
   },
-  "updatedAt": "2026-08-30T20:25:18.048Z"
+  "updatedAt": "2026-09-01T14:25:40.694Z"
 }
