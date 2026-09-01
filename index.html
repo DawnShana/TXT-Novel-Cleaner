@@ -47,13 +47,13 @@
           <div class="step">02 / CLEANING PROFILE</div>
           <div class="segmented" id="modeGroup">
             <button data-mode="conservative">保守</button>
-            <button class="active" data-mode="balanced">平衡</button>
-            <button data-mode="aggressive">激进</button>
+            <button data-mode="balanced">平衡</button>
+            <button class="active" data-mode="aggressive">激进</button>
           </div>
           <div class="mode-legend" id="modeLegend">
             <div data-mode-info="conservative"><b>保守</b><span>只自动处理已学习规则、网址/HTML 与极高置信广告；更多内容交给复核。</span></div>
-            <div class="active" data-mode-info="balanced"><b>平衡 · 推荐</b><span>高置信广告自动清理，边界项进入复核，兼顾效率与误删控制。</span></div>
-            <div data-mode-info="aggressive"><b>激进</b><span>扩大自动清理范围；适合污染很重的文本，但建议检查“自动清理”分组。</span></div>
+            <div data-mode-info="balanced"><b>平衡</b><span>高置信广告自动清理，边界项进入复核，兼顾效率与误删控制。</span></div>
+            <div class="active" data-mode-info="aggressive"><b>激进 · 默认</b><span>默认策略：高置信结构广告自动处理；低置信污染岛、数字插入和罗马数字仍保留复核，不以“激进”为理由跨正文删除。</span></div>
           </div>
           <label class="switch-row"><span><b>拼音混写修复</b><small>如 jin乎 → 近乎；英文词优先保护</small></span><input id="pinyinToggle" type="checkbox" checked><i></i></label>
           <button id="scanBtn" class="primary" disabled><span>开始本地扫描</span><b>→</b></button>
@@ -73,7 +73,7 @@
           <div><b id="mPinyinAuto">—</b><span>拼音自动修复</span></div>
           <div><b id="mPinyinReview">—</b><span>拼音待复核</span></div>
         </div>
-        <p id="summaryNote" class="note">当前使用“平衡”模式。进入复核后可查看自动处理内容，并随时恢复。</p>
+        <p id="summaryNote" class="note">当前默认使用“激进”模式。自动删除与待复核都应检查；低置信污染不会因激进模式被强制删除。</p>
       </section>
 
       <section id="donePanel" class="panel done-panel hidden">
