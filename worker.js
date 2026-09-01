@@ -1,5 +1,6 @@
 import {scanText,repairPinyin,applyMatches} from './cleaner-core.js';
 import {mergeAdPinyinScan,gatePinyinResult} from './ad-pinyin-overlay.js';
+import {mergeStructuralScan,gateStructuralPinyin} from './structural-engine.js';
 let model=null;
 
 async function getModel(){
@@ -18,14 +19,10 @@ function looksInjectedParen(field){
   if(/^[的吗赵王诺钱好得李了]{3,6}$/u.test(core)&&(core.startsWith('的')||core.startsWith('吗')||/[赵王诺钱李]/u.test(core)))return true;
   return false;
 }
-
 function protectStoryEmotes(result,text,opts){
   const safe=m=>m.kind!=='anti_scrape_injection'||looksInjectedParen(m.field);
-  result.auto=(result.auto||[]).filter(safe);
-  result.review=(result.review||[]).filter(safe);
-  result.cleaned=applyMatches(text,result.auto,opts?.preserveBlank!==false);
-  result.stats={...(result.stats||{}),auto:result.auto.length,review:result.review.length};
-  return result;
+  result.auto=(result.auto||[]).filter(safe);result.review=(result.review||[]).filter(safe);
+  result.cleaned=applyMatches(text,result.auto,opts?.preserveBlank!==false);result.stats={...(result.stats||{}),auto:result.auto.length,review:result.review.length};return result;
 }
 
 self.onmessage=async e=>{
@@ -34,12 +31,15 @@ self.onmessage=async e=>{
     if(type==='scan'){
       const {text,rules,opts}=e.data;
       let result=protectStoryEmotes(scanText(text,rules,opts),text,opts);
-      result=mergeAdPinyinScan(result,text,applyMatches,opts?.preserveBlank!==false);
+      result=mergeAdPinyinScan(result,text,rules,applyMatches,opts?.preserveBlank!==false);
+      result=mergeStructuralScan(result,text,rules,applyMatches,opts?.preserveBlank!==false);
       self.postMessage({id,ok:true,result});
     }else if(type==='pinyin'){
       const {text,rules}=e.data;
-      const result=repairPinyin(text,rules,await getModel());
-      self.postMessage({id,ok:true,result:gatePinyinResult(text,result)});
+      let result=repairPinyin(text,rules,await getModel());
+      result=gatePinyinResult(text,result,rules);
+      result=gateStructuralPinyin(text,result,rules);
+      self.postMessage({id,ok:true,result});
     }else throw new Error('未知任务');
   }catch(err){self.postMessage({id,ok:false,error:String(err?.stack||err)});}
 };
