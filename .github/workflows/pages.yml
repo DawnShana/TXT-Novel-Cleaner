@@ -28,6 +28,10 @@ jobs:
           node --check structural-engine.js
           node --check worker.js
           for f in src/*.js; do node --check "$f"; done
+          node --check tests/regression.mjs
+      - name: Run regression safety tests
+        shell: bash
+        run: node tests/regression.mjs
       - name: Validate JSON assets
         shell: bash
         run: |
