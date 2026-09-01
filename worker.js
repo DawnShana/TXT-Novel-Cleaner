@@ -1,6 +1,7 @@
 import {scanText,repairPinyin,applyMatches} from './cleaner-core.js';
 import {mergeAdPinyinScan,gatePinyinResult} from './ad-pinyin-overlay.js';
 import {mergeStructuralScan,gateStructuralPinyin} from './structural-engine.js';
+const normalizeNewlines=text=>String(text??'').replace(/\r\n|\r|\n/g,'\n');
 let model=null;
 
 async function getModel(){
@@ -29,16 +30,16 @@ self.onmessage=async e=>{
   const {id,type}=e.data||{};
   try{
     if(type==='scan'){
-      const {text,rules,opts}=e.data;
-      let result=protectStoryEmotes(scanText(text,rules,opts),text,opts);
-      result=mergeAdPinyinScan(result,text,rules,applyMatches,opts?.preserveBlank!==false);
-      result=mergeStructuralScan(result,text,rules,applyMatches,opts?.preserveBlank!==false);
+      const {text,rules,opts}=e.data,source=normalizeNewlines(text);
+      let result=protectStoryEmotes(scanText(source,rules,opts),source,opts);
+      result=mergeAdPinyinScan(result,source,rules,applyMatches,opts?.preserveBlank!==false);
+      result=mergeStructuralScan(result,source,rules,applyMatches,opts?.preserveBlank!==false);
       self.postMessage({id,ok:true,result});
     }else if(type==='pinyin'){
-      const {text,rules}=e.data;
-      let result=repairPinyin(text,rules,await getModel());
-      result=gatePinyinResult(text,result,rules);
-      result=gateStructuralPinyin(text,result,rules);
+      const {text,rules}=e.data,source=normalizeNewlines(text);
+      let result=repairPinyin(source,rules,await getModel());
+      result=gatePinyinResult(source,result,rules);
+      result=gateStructuralPinyin(source,result,rules);
       self.postMessage({id,ok:true,result});
     }else throw new Error('未知任务');
   }catch(err){self.postMessage({id,ok:false,error:String(err?.stack||err)});}
