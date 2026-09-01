@@ -1,19 +1,15 @@
 name: Deploy GitHub Pages
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
-
 jobs:
   deploy:
     environment:
@@ -23,51 +19,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Validate JavaScript
         shell: bash
         run: |
           node --check app.js
           node --check cleaner-core.js
           node --check ad-pinyin-overlay.js
+          node --check structural-engine.js
           node --check worker.js
           for f in src/*.js; do node --check "$f"; done
-
       - name: Validate JSON assets
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const files = [
-            'rules.json',
-            'pinyin-p.json',
-            'pinyin-u.json',
-            'pinyin-b.json',
-            'pinyin-t.json',
-            ...fs.readdirSync('rules/builtin')
-              .filter(x => x.endsWith('.json'))
-              .sort()
-              .map(x => 'rules/builtin/' + x),
-          ];
-          let bad = false;
-          for (const file of files) {
-            const text = fs.readFileSync(file, 'utf8');
-            try {
-              JSON.parse(text);
-              console.log('OK      ' + file);
-            } catch (e) {
-              bad = true;
-              console.error('INVALID ' + file + ': ' + e.message);
-              const m = String(e.message).match(/position\s+(\d+)/i);
-              if (m) {
-                const p = Number(m[1]);
-                console.error('CONTEXT ' + JSON.stringify(text.slice(Math.max(0, p - 140), Math.min(text.length, p + 140))));
-              }
-            }
-          }
-          if (bad) process.exit(1);
+          const files=['rules.json','pinyin-p.json','pinyin-u.json','pinyin-b.json','pinyin-t.json',...fs.readdirSync('rules/builtin').filter(x=>x.endsWith('.json')).sort().map(x=>'rules/builtin/'+x)];
+          let bad=false;for(const file of files){const text=fs.readFileSync(file,'utf8');try{JSON.parse(text);console.log('OK      '+file)}catch(e){bad=true;console.error('INVALID '+file+': '+e.message);const m=String(e.message).match(/position\s+(\d+)/i);if(m){const p=Number(m[1]);console.error('CONTEXT '+JSON.stringify(text.slice(Math.max(0,p-140),Math.min(text.length,p+140))))}}}if(bad)process.exit(1);
           NODE
-
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
