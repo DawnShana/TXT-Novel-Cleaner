@@ -1,6 +1,8 @@
 import {applyMatches,applyPinyinReview,contextualFix} from '../cleaner-core.js';
 import {A,$,$$,fmt,esc,toast,view,worker,decode,detectPublishers,reset,groupRows,family,badge,markDirty,dl,pinyinAutoKey,pinyinAutoGroups} from './state.js';
 
+const normalizeNewlines=text=>String(text??'').replace(/\r\n|\r|\n/g,'\n');
+
 const MODE_TEXT={
   conservative:'保守：只自动处理已学习规则、网页/HTML 与极高置信广告；其余更多进入复核。',
   balanced:'平衡：高置信内容自动处理，边界项进入复核；这是默认推荐模式。',
@@ -23,9 +25,12 @@ function profileScan(scan,mode){
         ||(m.kind==='group_code_ad'&&m.score>=11)
         ||(m.kind==='full_line_ad'&&m.score>=11);
     }else if(mode==='aggressive'){
-      if(m.kind==='roman_numeral')del=false;
-      else if(['split_punct_ad','group_code_ad','full_line_ad'].includes(m.kind))del=true;
-      else if(['pollution','obfuscated_ad','standalone_pollution_line','pollution_prefix','group_context_ad'].includes(m.kind)&&m.score>=4.5)del=true;
+      // 激进模式扩大高置信结构广告的自动处理，但不把低置信污染 span / 数字插入 / 罗马数字强行升级为删除。
+      if(['roman_numeral','numeric_injection','repeat_anomaly'].includes(m.kind))del=false;
+      else if(m.kind==='pollution_island')del=m.meta?.safeAuto===true;
+      else if(m.kind==='full_line_ad')del=m.score>=8;
+      else if(m.kind==='ad_pinyin_pollution')del=m.score>=8;
+      else if(['split_punct_ad','group_code_ad','source_obfuscated_ad','chapter_boundary_artifact','platform_artifact','repeat_pattern','anti_scrape_injection'].includes(m.kind))del=m.score>=8;
     }
     (del?auto:review).push(m);
   }
@@ -117,7 +122,7 @@ function selectedAutoAd(){return(A.scan?.auto||[]).filter(m=>(A.autoAd[m.field]|
 export async function scan(){
   if(!A.file)return;reset();$('#scanBtn').disabled=true;
   try{
-    prog(true,'识别 TXT 编码…',10);const d=await decode(A.file);A.source=d.text;prog(true,'分析广告结构…',25);const pubs=detectPublishers(A.source);prog(true,'本地扫描正文…',45);
+    prog(true,'识别 TXT 编码…',10);const d=await decode(A.file);A.source=normalizeNewlines(d.text);prog(true,'分析广告结构…',25);const pubs=detectPublishers(A.source);prog(true,'本地扫描正文…',45);
     A.scan=await worker('scan',{text:A.source,rules:A.rules,opts:{mode:A.mode,publishers:pubs,preserveBlank:true}});A.scan=profileScan(A.scan,A.mode);A.groups=groupRows(A.scan.review);for(const g of groupRows(A.scan.auto))A.autoAd[g.field]='delete';
     prog(true,'完成',100);setTimeout(()=>prog(false),250);$('#summaryPanel').classList.remove('hidden');$('#summaryTitle').textContent=`${A.file.name} · ${d.enc}`;$('#mAuto').textContent=fmt(A.scan.auto.length);$('#mReview').textContent=fmt(A.groups.length);$('#mPinyinAuto').textContent='—';$('#mPinyinReview').textContent='—';$('#summaryNote').textContent=MODE_TEXT[A.mode]+' 进入复核后可查看自动处理内容并恢复。';renderAutoAd();renderAdReview();renderReviewGroups(A.groups.length?'reviewAd':'autoAd');toast(`${A.mode==='conservative'?'保守':A.mode==='aggressive'?'激进':'平衡'}模式：自动清理 ${A.scan.auto.length} 处`);
   }catch(e){prog(false);toast('扫描失败：'+e.message)}finally{$('#scanBtn').disabled=false}
