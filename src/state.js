@@ -3,7 +3,7 @@ import {mergeRulesExt,emptyRules,subtractRules,countRules,ALL_RULE_TYPES,ruleKey
 export const $=s=>document.querySelector(s);
 export const $$=s=>[...document.querySelectorAll(s)];
 export const fmt=n=>Number(n||0).toLocaleString('zh-CN');
-export const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt',"'":'&#39;','"':'&quot;'}[c]));
+export const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
 export const A={mode:'balanced',file:null,source:'',rules:null,base:null,baseSources:[],personal:null,syncedPersonal:null,scan:null,groups:[],ad:{},autoAd:{},pinyin:null,pd:{},pinyinAuto:{},reviewGroup:'autoAd',final:'',dirty:0,w:null,id:0,edit:null};
 export const LS='novelCleaner.localRules.v2',LG='novelCleaner.git.v1',SYNCED='novelCleaner.syncedRules.v1';
@@ -22,7 +22,14 @@ export function refreshDirty(){A.dirty=pendingRuleChanges().length;const e=$('#p
 export function persist(){A.personal=subtract(A.rules,A.base);localStorage.setItem(LS,JSON.stringify(A.personal));counts();refreshDirty()}
 export function markDirty(){if(A.personal)A.personal.version=(+A.personal.version||1)+1;persist()}
 async function j(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(`${url} HTTP ${r.status}`);return r.json()}
-export async function loadRules(){try{const [remoteRaw,...bsRaw]=await Promise.all([j(`./rules.json?t=${Date.now()}`),...B.map(x=>j('./'+x))]);let base=empty();const bs=bsRaw.map(ensureRules);for(const b of bs)base=mergeRulesExt(base,b);const remote=ensureRules(remoteRaw);let cachedSynced=null,local=null;try{cachedSynced=ensureRules(JSON.parse(localStorage.getItem(SYNCED)||'null')||{})}catch{}try{local=ensureRules(JSON.parse(localStorage.getItem(LS)||'null')||{})}catch{}const synced=(cachedSynced&&(+cachedSynced.version||0)>(+remote.version||0))?cachedSynced:remote;let personal=remote;if(local&&(+local.version||0)>(+remote.version||0))personal=local;A.base=base;A.baseSources=bs.map((rules,i)=>({path:B[i],rules}));A.syncedPersonal=synced;A.personal=personal;A.rules=mergeRulesExt(base,personal);localStorage.setItem(SYNCED,JSON.stringify(synced));$('#ruleStatus').className='dot ready';$('#ruleStatusText').textContent=`内置 ${fmt(countRuleSet(base))} · 个人 ${fmt(countRuleSet(personal))}`;persist()}catch(e){$('#ruleStatus').className='dot error';$('#ruleStatusText').textContent='规则加载失败';toast(e.message)}}
+export async function loadRules(){
+  try{
+    const [remoteRaw,...bsRaw]=await Promise.all([j(`./rules.json?t=${Date.now()}`),...B.map(x=>j('./'+x))]);let base=empty();const bs=bsRaw.map(ensureRules);for(const b of bs)base=mergeRulesExt(base,b);const remote=ensureRules(remoteRaw);
+    let cachedSynced=null,local=null;try{cachedSynced=ensureRules(JSON.parse(localStorage.getItem(SYNCED)||'null')||{})}catch{}try{local=ensureRules(JSON.parse(localStorage.getItem(LS)||'null')||{})}catch{}
+    const synced=(cachedSynced&&(+cachedSynced.version||0)>(+remote.version||0))?cachedSynced:remote;let personal=remote;if(local&&(+local.version||0)>(+remote.version||0))personal=local;
+    A.base=base;A.baseSources=bs.map((rules,i)=>({path:B[i],rules}));A.syncedPersonal=synced;A.personal=personal;A.rules=mergeRulesExt(base,personal);localStorage.setItem(SYNCED,JSON.stringify(synced));$('#ruleStatus').className='dot ready';$('#ruleStatusText').textContent=`内置 ${fmt(countRuleSet(base))} · 个人 ${fmt(countRuleSet(personal))}`;persist();
+  }catch(e){$('#ruleStatus').className='dot error';$('#ruleStatusText').textContent='规则加载失败';toast(e.message)}
+}
 export function counts(){if(!A.rules)return;const p=ensureRules(A.personal||empty());$('#rAd').textContent=fmt(countRuleSet(A.base));$('#rGarble').textContent=fmt(countRuleSet(p));$('#rPinyin').textContent=fmt(p.pinyinFixes?.length||0);$('#rKeep').textContent=fmt((p.keepFields?.length||0)+(p.englishKeep?.length||0)+(p.pinyinKeep?.length||0))}
 export function worker(type,payload){if(!A.w)A.w=new Worker('./worker.js',{type:'module'});const id=++A.id;return new Promise((ok,no)=>{const h=e=>{if(e.data?.id!==id)return;A.w.removeEventListener('message',h);e.data.ok?ok(e.data.result):no(Error(e.data.error))};A.w.addEventListener('message',h);A.w.postMessage({id,type,...payload})})}
 function score(s){return(s.match(/[\u3400-\u9fff]/g)||[]).length*.02-(s.match(/�/g)||[]).length*10}
